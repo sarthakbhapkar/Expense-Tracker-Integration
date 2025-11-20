@@ -76,6 +76,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
   // 2️. Add expense
   // ----------------------------------------
   const addExpense = async (exp: Expense) => {
+     if (!user?.email) return;
     const body = {
       ExpExpensesAlias: {
         ds: "Expenses",
@@ -92,18 +93,27 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       },
     };
 
-    await fetch(API_BASE!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: AUTH_TOKEN!,
-        "x-api-key": XAPI_KEY!,
-        "X-Application": APP_NAME,
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
+    // await fetch(API_BASE!, {
+      
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     Authorization: AUTH_TOKEN!,
+    //     "x-api-key": XAPI_KEY!,
+    //     "X-Application": APP_NAME,
+    //     Accept: "application/json",
+    //   },
+    //   body: JSON.stringify(body),
+    // });
+      const res = await fetch(`https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+            'X-Application': "training",
+              Authorization: user.jwt,
+        },
+        body: JSON.stringify(body),
+      });
     fetchExpenses();
   };
 
