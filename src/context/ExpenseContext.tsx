@@ -27,6 +27,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
     setError(null);
 
     try {
+      
       const body = {
         ExpExpensesAlias: {
           ds: "Expenses",
@@ -38,14 +39,12 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       };
 
-      const res = await fetch(API_BASE!, {
+      const res = await fetch(`https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: AUTH_TOKEN!,
-          "x-api-key": XAPI_KEY!,
-          "X-Application": APP_NAME,
-          Accept: "application/json",
+            'X-Application': "training",
+              Authorization: user.jwt,
         },
         body: JSON.stringify(body),
       });

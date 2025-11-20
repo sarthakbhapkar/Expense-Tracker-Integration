@@ -15,10 +15,12 @@ import { useState } from "react";
 import bg from "../img.jpg";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Dashboard from "./Dashboard";
+
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, loading } = useAuth();
+  const { login,user, loading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,7 +49,9 @@ const Login = () => {
       setSubmitLoading(false);
     }
   };
-
+if(user){
+   <Dashboard />
+}
   return (
     <Container
       maxWidth={false}
@@ -85,7 +89,7 @@ const Login = () => {
           <TextField
             fullWidth
             label="Email"
-            type="email"
+            type="input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             margin="normal"
