@@ -12,11 +12,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE = process.env.REACT_APP_CLOUDIO_BASE;
-  const AUTH_TOKEN = process.env.REACT_APP_CLOUDIO_AUTH_TOKEN;
-  const XAPI_KEY = process.env.REACT_APP_CLOUDIO_XAPIKEY;
-  const APP_NAME = process.env.REACT_APP_CLOUDIO_APPNAME || "Training";
-
   // ----------------------------------------
   // 1️. Fetch expenses for the logged-in user
   // ----------------------------------------
@@ -27,7 +22,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
     setError(null);
 
     try {
-      
       const body = {
         ExpExpensesAlias: {
           ds: "Expenses",
@@ -39,15 +33,18 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       };
 
-      const res = await fetch(`https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-            'X-Application': "training",
-              Authorization: user.jwt,
-        },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(
+        `https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Application": "training",
+            Authorization: user.jwt,
+          },
+          body: JSON.stringify(body),
+        }
+      );
 
       const json = await res.json();
       const rows = json?.data?.ExpExpensesAlias?.data ?? [];
@@ -76,7 +73,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
   // 2️. Add expense
   // ----------------------------------------
   const addExpense = async (exp: Expense) => {
-     if (!user?.email) return;
+    if (!user?.email) return;
     const body = {
       ExpExpensesAlias: {
         ds: "Expenses",
@@ -93,27 +90,18 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       },
     };
 
-    // await fetch(API_BASE!, {
-      
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     Authorization: AUTH_TOKEN!,
-    //     "x-api-key": XAPI_KEY!,
-    //     "X-Application": APP_NAME,
-    //     Accept: "application/json",
-    //   },
-    //   body: JSON.stringify(body),
-    // });
-      const res = await fetch(`https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`, {
+    const res = await fetch(
+      `https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`,
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-            'X-Application': "training",
-              Authorization: user.jwt,
+          "X-Application": "training",
+          Authorization: user.jwt,
         },
         body: JSON.stringify(body),
-      });
+      }
+    );
     fetchExpenses();
   };
 
@@ -122,15 +110,20 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
   // ----------------------------------------
   const updateExpense = async (exp: Expense) => {
     if (!exp?.id) throw new Error("Missing expense id");
-    if (!API_BASE || !AUTH_TOKEN || !XAPI_KEY)
-      throw new Error("App configuration missing");
+    if (!user?.x || !user?.jwt) {
+      throw new Error("User session missing. Please login again.");
+    }
+
+    setLoading(true);
+    setError(null);
 
     try {
+      // 1) Fetch the existing row using the API route (using user.x + jwt)
       const fetchBody = {
         ExpExpensesAlias: {
           ds: "Expenses",
           query: {
-            filter: [{ id: { is: Number(exp.id) } }],
+            filter: [{ id: { is: Number(exp.id) }}],
             projection: {
               id: 1,
               title: 1,
@@ -149,17 +142,18 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       };
 
-      const fetchRes = await fetch(API_BASE!, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: AUTH_TOKEN!,
-          "x-api-key": XAPI_KEY!,
-          "X-Application": APP_NAME,
-          Accept: "application/json",
-        },
-        body: JSON.stringify(fetchBody),
-      });
+      const fetchRes = await fetch(
+        `https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Application": "training",
+            Authorization: user.jwt,
+          },
+          body: JSON.stringify(fetchBody),
+        }
+      );
 
       if (!fetchRes.ok) {
         const txt = await fetchRes.text().catch(() => "");
@@ -170,6 +164,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       const row = fetchJson?.data?.ExpExpensesAlias?.data?.[0];
       if (!row) throw new Error("Row not found on server");
 
+      // 2) Build update payload merging current values with new values
       const updateData = {
         _rs: "U",
         id: row.id,
@@ -191,17 +186,19 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       };
 
-      const updateRes = await fetch(API_BASE!, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: AUTH_TOKEN!,
-          "x-api-key": XAPI_KEY!,
-          "X-Application": APP_NAME,
-          Accept: "application/json",
-        },
-        body: JSON.stringify(updateBody),
-      });
+      // 3) Send update using the same endpoint pattern
+      const updateRes = await fetch(
+        `https://dev.cloudio.io/v1/api?x=${encodeURIComponent(user.x)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Application": "training",
+            Authorization: user.jwt,
+          },
+          body: JSON.stringify(updateBody),
+        }
+      );
 
       if (!updateRes.ok) {
         const txt = await updateRes.text().catch(() => "");
@@ -216,36 +213,102 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       await fetchExpenses();
-    } catch (err) {
+    } catch (err: any) {
       console.error("updateExpense error:", err);
+      setError(err?.message ?? "Failed to update expense");
       throw err;
+    } finally {
+      setLoading(false);
     }
   };
-
   // ----------------------------------------
   // 4️. Delete expense
   // ----------------------------------------
   const deleteExpense = async (id: string) => {
-    const body = {
-      ExpExpensesAlias: {
-        ds: "Expenses",
-        data: [{ _rs: "D", id }],
-      },
-    };
+    if (!id) throw new Error("Missing id to delete");
+    if (!user?.x || !user?.jwt) {
+      throw new Error("User session missing. Please login again.");
+    }
 
-    await fetch(API_BASE!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: AUTH_TOKEN!,
-        "x-api-key": XAPI_KEY!,
-        "X-Application": APP_NAME,
-        Accept: "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    setLoading(true);
+    setError(null);
 
-    fetchExpenses();
+    try {
+      const fetchBody = {
+        ExpExpensesAlias: {
+          ds: "Expenses",
+          query: {
+            filter: [{ id: { is: Number(id) } }],
+            projection: { id: 1, lastUpdateDate: 1 },
+            limit: 1,
+            offset: 0,
+          },
+        },
+      };
+
+      const fetchRes = await fetch(
+        `https://dev.cloudio.io/v1/api?x=${encodeURIComponent(String(user.x))}`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Application": "training",
+            Authorization: `Bearer ${user.jwt}`,
+          },
+          body: JSON.stringify(fetchBody),
+        }
+      );
+
+      if (!fetchRes.ok) {
+        const txt = await fetchRes.text().catch(() => "");
+        throw new Error(`Failed to fetch row: ${txt || fetchRes.status}`);
+      }
+
+      const fetchJson = await fetchRes.json();
+      const row = fetchJson?.data?.ExpExpensesAlias?.data?.[0];
+      if (!row) throw new Error("Row not found on server");
+
+      const deleteBody = {
+        ExpExpensesAlias: {
+          ds: "Expenses",
+          data: [
+            {
+              _rs: "D",
+              id: row.id,
+              lastUpdateDate: row.lastUpdateDate,
+            },
+          ],
+        },
+      };
+
+      const res = await fetch(
+        `https://dev.cloudio.io/v1/api?x=${encodeURIComponent(String(user.x))}`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Application": "training",
+            Authorization: `Bearer ${user.jwt}`,
+          },
+          body: JSON.stringify(deleteBody),
+        }
+      );
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`Delete failed: ${txt || res.status}`);
+      }
+
+      await fetchExpenses();
+    } catch (err: any) {
+      console.error("deleteExpense error:", err);
+      setError("Failed to delete expense");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ----------------------------------------

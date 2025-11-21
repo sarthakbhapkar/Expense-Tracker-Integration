@@ -19,6 +19,10 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SESSION_KEY = "sessionUser";
+const LOGIN_FLAG = "isLoggedIn";
+
+
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
@@ -51,9 +55,19 @@ async function preValidate(token: string): Promise<string> {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   //const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [{ token, x }, setXToken] = useState({ token: `X${ulid()}`, x: '' });
 
+  useEffect(() => {
+    const flag = localStorage.getItem(LOGIN_FLAG);
+    const stored = localStorage.getItem(SESSION_KEY);
+
+    if (flag === "true" && stored) {
+      setUser(JSON.parse(stored));
+    }
+
+    setLoading(false);
+  }, []);
   const API_BASE = process.env.REACT_APP_CLOUDIO_BASE;
   const AUTH_TOKEN = process.env.REACT_APP_CLOUDIO_AUTH_TOKEN;
   const XAPI_KEY = process.env.REACT_APP_CLOUDIO_XAPIKEY;
@@ -62,8 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
  
     preValidate(token)
       .then( (x_token) => {
-       
-setXToken({token,x:x_token});})
+       setXToken({token,x:x_token});})
      },[])
   const login = async (email: string, password: string) => {
     if (!API_BASE || !AUTH_TOKEN || !XAPI_KEY) {
@@ -72,35 +85,7 @@ setXToken({token,x:x_token});})
 
     setLoading(true);
     try {
-      // const body = {
-      //   ExpUsersAlias: {
-      //     ds: "ExpUsers",
-      //     query: {
-      //       filter: [
-      //         { email: { is: email.trim().toLowerCase() } },
-      //         { password: { is: password } },
-      //       ],
-      //       projection: { id: 1, name: 1, email: 1 },
-      //       sort: { id: 1 },
-      //       offset: 0,
-      //       limit: 1,
-      //     },
-      //   },
-      // };
-
-      // const res = await fetch(API_BASE, {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //     Authorization: AUTH_TOKEN,
-      //     "x-api-key": XAPI_KEY,
-      //     "X-Application": APP_NAME,
-      //     Accept: "application/json",
-      //   },
-      //   body: JSON.stringify(body),
-      // });
-  console.log(email,password)
-
+   console.log(token+x);
    const response = await fetch(`https://dev.cloudio.io/v1/auth`, {
         method: 'POST',
         credentials: 'include',
@@ -113,7 +98,7 @@ setXToken({token,x:x_token});})
         
               un: encrypt(email.trim()),
               pw: encrypt(password.trim()),
-             is_admin_url:false,
+              is_admin_url:false,
               is_native_login: true,
             })
       });
@@ -127,29 +112,16 @@ setXToken({token,x:x_token});})
         );
        }
 
-      // if (!res.ok) {
-      //   const text = await res.text().catch(() => "");
-      //   throw new Error(
-      //     `Login failed (status ${res.status})${text ? `: ${text}` : ""}`
-      //   );
-      // }
+      const u: User = {
+        id: r.userId,
+        email,
+        x: r.x,
+        jwt: r.jwt,
+      };
 
-      // const json = await res.json();
-      // if (json?.status !== "OK") {
-      //   const errMsg =
-      //     json?.message || "Login failed. Server returned non-OK status.";
-      //   throw new Error(errMsg);
-      // }
-
-      // const returnedUser = json?.data?.ExpUsersAlias?.data?.[0] ?? null;
-
-      // if (!returnedUser) {
-      //   throw new Error("Invalid credentials or user not found.");
-      // }
-
-      // const returnedToken = json?.token || json?.authToken || null;
-
-      setUser({email,x:r.x,jwt:r.jwt});
+      setUser(u);
+      localStorage.setItem(LOGIN_FLAG, "true");
+      localStorage.setItem(SESSION_KEY, JSON.stringify(u));
     
       //setToken(returnedToken);
     } finally {
@@ -157,12 +129,28 @@ setXToken({token,x:x_token});})
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (user?.x) {
+      const csrf = encodeURIComponent(user.x);
+      try {
+        await fetch(`https://dev.cloudio.io/v1/signout?x=${csrf}`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "X-Application": "SignIn",
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (err) {
+        console.error("Signout error:", err);
+      }
+    }
+
+    localStorage.removeItem(LOGIN_FLAG);
+    localStorage.removeItem(SESSION_KEY);
     setUser(null);
-    //setToken(null);
   };
 
-  // token,
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}

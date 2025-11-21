@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>("");
+
+  const {logout} = useAuth();
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("currentUser") || "null");
@@ -13,12 +16,12 @@ const Navbar: React.FC = () => {
     }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("currentUser");
-    window.dispatchEvent(new Event("currentUserChange"));
-    navigate("/login");
-  };
+  // const handleLogout = () => {
+  //   localStorage.removeItem("isLoggedIn");
+  //   localStorage.removeItem("currentUser");
+  //   window.dispatchEvent(new Event("currentUserChange"));
+  //   navigate("/login");
+  // };
 
   return (
     <AppBar position="static" color="default" sx={{ mb: 4 }}>
@@ -62,7 +65,7 @@ const Navbar: React.FC = () => {
           <Button color="inherit" onClick={() => navigate("/all-expenses")}>
             Show All Expenses
           </Button>
-          <Button color="error" variant="outlined" onClick={handleLogout}>
+          <Button color="error" variant="outlined" onClick={logout}>
             Sign Out
           </Button>
         </Box>

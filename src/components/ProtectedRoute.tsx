@@ -6,16 +6,16 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps): ReactElement | null => {
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
   if (loading) return null;
 
-  return user ? (
+  return user || isLoggedIn ? (
     <>{children}</>
   ) : (
-    <Navigate to="/login" state={{ from: location }} replace />
+    <Navigate to="/login" replace />
   );
 };
 
